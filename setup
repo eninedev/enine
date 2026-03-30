@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# enine setup — register skills with Claude Code
+set -e
+
+ENINE_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILLS_DIR="$(dirname "$ENINE_DIR")"
+
+# Parse flags
+SKILL_PREFIX=1
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-prefix) SKILL_PREFIX=0; shift ;;
+    --prefix)    SKILL_PREFIX=1; shift ;;
+    *) shift ;;
+  esac
+done
+
+# Verify we're inside a skills directory
+SKILLS_BASENAME="$(basename "$SKILLS_DIR")"
+if [ "$SKILLS_BASENAME" != "skills" ]; then
+  echo "Warning: enine is not inside a 'skills' directory ($SKILLS_DIR)."
+  echo "Symlinks will be created in $SKILLS_DIR anyway."
+fi
+
+# Link each skill directory that contains a SKILL.md
+linked=()
+for skill_dir in "$ENINE_DIR"/*/; do
+  if [ -f "$skill_dir/SKILL.md" ]; then
+    skill_name="$(basename "$skill_dir")"
+    if [ "$SKILL_PREFIX" -eq 1 ]; then
+      link_name="enine-$skill_name"
+    else
+      link_name="$skill_name"
+    fi
+    target="$SKILLS_DIR/$link_name"
+    if [ -L "$target" ] || [ ! -e "$target" ]; then
+      ln -snf "enine/$skill_name" "$target"
+      linked+=("$link_name")
+    fi
+  fi
+done
+
+if [ ${#linked[@]} -gt 0 ]; then
+  echo "enine ready."
+  echo "  linked skills: ${linked[*]}"
+else
+  echo "enine: no skills found (no directories with SKILL.md)."
+fi
